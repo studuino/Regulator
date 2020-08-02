@@ -21,6 +21,7 @@ byte mac[] = SECRET_MAC;
 #define ETHERNET
 #include <SD.h>
 #define FS SD
+#define NO_OTA_PORT
 #include <ArduinoOTA.h>
 #endif
 

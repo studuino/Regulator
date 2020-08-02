@@ -57,14 +57,16 @@ void pilotLoop() {
     return;
   }
 
+  int pvChP = (pvChargingPower > 0) ? 0 : pvChargingPower; // as default take only negative charge (discharge)
+  if (!pvBattCalib) { // at battery calibration. battery takes what is needed. surplus power can occur
+
   // check state of charge
   // * the Symo regulates the distribution of energy while the battery is charging.
   // usually we don't want to interfere with that (unless heating has priority),
   // but we must enter the regulation algorithm if heating is on.
-  // * at battery calibration there is no regulation. battery takes what is needed. surplus power can occur
   // * if the production is larger then the battery can use for charging, surplus can occur
   if (powerPilotPlan != HEATING_PRIORITY_AM && pvSOC < MONITORING_UNTIL_SOC
-      && heatingPower == 0 && !pvBattCalib && pvChargingPower < BATTERY_MAX_CHARGING_POWER)
+      && heatingPower == 0 && pvChargingPower < BATTERY_MAX_CHARGING_POWER)
     return;
 
   // in bypass mode, we can use battery as buffer to ignore short PV shadows or small concurrent consumption
@@ -72,9 +74,8 @@ void pilotLoop() {
     return;
 
   // battery charge/discharge control
-  int pvChP = (pvChargingPower > 0) ? 0 : pvChargingPower; // as default take only negative charge (discharge)
   if ((powerPilotPlan == HEATING_PRIORITY_AM || pvSOC > BYPASS_BUFFER_SOC)
-      && (heatingPower + pvChargingPower) > HEATING_PRIORITY_START_POWER && !pvBattCalib
+      && (heatingPower + pvChargingPower) > HEATING_PRIORITY_START_POWER
       && (inverterAC - heatingPower + HEATING_PRIORITY_START_POWER) < CONSUMPTION_POWER_LIMIT) {
     pvChP = pvChargingPower; // take this big charging as available (not everything will be used and/or the battery can charge later)
   } else if (pvSOC < BYPASS_BUFFER_SOC && pvChargingPower < (BATTERY_MAX_CHARGING_POWER - TOP_OSCILLATION_DISCHARGE_LIMIT)) {
@@ -86,6 +87,8 @@ void pilotLoop() {
       && (pvChP + meterPower) > TOP_OSCILLATION_DISCHARGE_LIMIT) { // tolerated discharge
     pvChP = TOP_OSCILLATION_COUNTERMEASURE; // almost ignore discharge. full battery can do a little discharging
   }
+
+  } // close if (!pvBattCalib) {
 
   // sum available power
   short availablePower = heatingPower + meterPower + pvChP - (mainRelayOn ? 0 : PUMP_POWER);
